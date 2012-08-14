@@ -1,0 +1,8 @@
+This is going to be an erlang server that relays message based on who can hear them.
+
+I am at x, y.
+
+/whisper
+/say
+/yell
+/shout
