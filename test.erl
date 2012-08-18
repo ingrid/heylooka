@@ -12,42 +12,49 @@ start() ->
     timer:sleep(infinity).
 
 listen() ->
-    io:format("Listen started~n"),
     {ok, LSock} = gen_tcp:listen(8000, [{reuseaddr, true}]),
     listen(LSock).
 
 listen(LSock) ->
-    io:format("listen on a socket started~n"),
     {ok, Socket} = gen_tcp:accept(LSock),
-    io:format("just accepted a socket~n"),
-    ClientResponder = spawn(?MODULE, client, [Socket, 0, 0]),
-    io:format("just spawned a client~n"),
+    ClientResponder = spawn(?MODULE, client, [Socket, 0, 0, "Unnamed"]),
     gen_tcp:controlling_process(Socket, ClientResponder),
-    io:format("just set client to use socket~n"),
     chat ! {useradd, ClientResponder},
-    io:format("just told chatroom to add user~n"),
     listen(LSock).
 
 chatroom(UserPids) ->
     receive
         {useradd, UserPid} ->
-            io:format('added user ~w', [UserPid]),
             chatroom(UserPids ++ [UserPid]);
-        {msg, From, Data} ->
-            F = fun(Pid) -> Pid ! {msg, From, Data} end,
+        {msg, From, Data, Radius} ->
+            io:format("chat room received message~n", []),
+            F = fun(Pid) -> Pid ! {msg, From, Data, Radius} end,
             lists:foreach(F, UserPids),
             chatroom(UserPids)
     end.
 
-client(Socket, X, Y) ->
+client(Socket, X, Y, Name) ->
     receive
         {tcp, Socket, Data} ->
-            io:format('~n~p received some data: ', [self()]),
-            io:format(Data ++ "\n"),
-            chat ! {msg, {client, X, Y, self()}, Data},
-            client(Socket, X, Y);
-        {msg, {client, From_X, From_Y, From_Pid}=From, Data} ->
-            io:format('~n~p relayed some data: ', [self()]),
-            gen_tcp:send(Socket, Data++"\n"),
-            client(Socket, X, Y)
+            case parse:parse(Data) of
+                {nick, NewName} ->
+                    io:format("~w name changed to ~s!~n", [self(), NewName]),
+                    client(Socket, X, Y, NewName);
+                {move, Dir} ->
+                    io:format("~w moved!~n", [Name]),
+                    client(Socket, X+1, Y, Name);
+                {event, Event} -> 
+                    io:format("message sent:~s~n", [Event]),
+                    chat ! {msg, {client, X, Y, self(), Name}, Event, 5},
+                    client(Socket, X, Y, Name)
+            end;
+        {msg, {client, From_X, From_Y, From_Pid, From_Name}=From, Event, Radius} ->
+            if
+                abs(From_X - X) + abs(From_Y - Y) < Radius ->
+                    io:format("Message in range of ~w!~n", [self()]),
+                    gen_tcp:send(Socket, io_lib:format("~w ~w ~w ~s", [Radius, From_X, From_Y, Event])),
+                    client(Socket, X, Y, Name);
+                true ->
+                    io:format("Message not in range of ~w.~n", [self()])
+            end
     end.
