@@ -23,11 +23,21 @@ listen(LSock) ->
     gen_tcp:controlling_process(Socket, ClientResponder),
     listen(LSock).
 
-print(Socket) ->
+chatroom(Users) ->
+    receive
+        {useradd, User} ->
+            {client, X, Y, Pid} = User,
+            io:format('added user ~s at ~i ~i', [Pid, X, Y]),
+            chatroom(Users ++ [User])
+    end.
+
+client(Socket) ->
     receive
         {tcp, Socket, Data} ->
-            io:format('~nreceived some data: '),
-            io:format(Data),
-            print(Socket)
+            io:format('~n~preceived some data: ', self()),
+            io:format(Data ++ "\n"),
+            client(Socket);
+        {msg, {client, X, Y, Pid}=From, Data} ->
+            gen_tcp:send(Socket, Data++"\n")
     end.
 
