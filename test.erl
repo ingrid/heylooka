@@ -18,7 +18,6 @@ listen() ->
 listen(LSock) ->
     {ok, Socket} = gen_tcp:accept(LSock),
     ClientResponder = spawn(?MODULE, client, [Socket, 0, 0, "Unnamed"]),
-    gen_tcp:controlling_process(Socket, ClientResponder),
     chat ! {useradd, ClientResponder},
     listen(LSock).
 
@@ -34,27 +33,32 @@ chatroom(UserPids) ->
     end.
 
 client(Socket, X, Y, Name) ->
+    Splitter = spawn(parse, splitter, [self(), ""]),
+    gen_tcp:controlling_process(Socket, Splitter),
+    client(Socket, X, Y, Name, Splitter).
+
+client(Socket, X, Y, Name, Splitter) ->
     receive
-        {tcp, Socket, Data} ->
-            case parse:parse(Data) of
-                {nick, NewName} ->
-                    io:format("~w name changed to ~s!~n", [self(), NewName]),
-                    client(Socket, X, Y, NewName);
-                {move, Dir} ->
-                    io:format("~w moved!~n", [Name]),
-                    client(Socket, X+1, Y, Name);
-                {event, Event} -> 
-                    io:format("message sent:~s~n", [Event]),
-                    chat ! {msg, {client, X, Y, self(), Name}, Event, 5},
-                    client(Socket, X, Y, Name)
-            end;
         {msg, {client, From_X, From_Y, From_Pid, From_Name}=From, Event, Radius} ->
             if
                 abs(From_X - X) + abs(From_Y - Y) < Radius ->
                     io:format("Message in range of ~w!~n", [self()]),
                     gen_tcp:send(Socket, io_lib:format("~w ~w ~w ~s", [Radius, From_X, From_Y, Event])),
-                    client(Socket, X, Y, Name);
+                    client(Socket, X, Y, Name, Splitter);
                 true ->
                     io:format("Message not in range of ~w.~n", [self()])
+            end;
+        Data ->
+            case parse:parse(Data) of
+                {nick, NewName} ->
+                    io:format("~w name changed to ~s!~n", [self(), NewName]),
+                    client(Socket, X, Y, NewName, Splitter);
+                {move, Dir} ->
+                    io:format("~w moved!~n", [Name]),
+                    client(Socket, X+1, Y, Name, Splitter);
+                {event, Event} -> 
+                    io:format("message sent:~s~n", [Event]),
+                    chat ! {msg, {client, X, Y, self(), Name}, Event, 5},
+                    client(Socket, X, Y, Name, Splitter)
             end
     end.
