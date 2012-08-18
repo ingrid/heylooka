@@ -14,3 +14,32 @@ parse(Data) ->
         _ ->
             io:format("Not a command")
     end.
+
+splitter(Node, Port, Rest) ->
+    if
+        Rest =/= [] ->
+            {Length, Trailing} = string:to_integer(Rest),
+            if
+                Length =:= error ->
+                    splitter(Node, Port, "");
+                true ->
+                    io:format("length: ~w, trailing: ~s", [Length, Trailing]),
+                    Msg = string:sub_string(Trailing, 2, Length + 1),
+                    io:format("Msg: ~s", [Msg]),
+                    NewRest = string:sub_string(Rest, string:len(Rest) - string:len(Trailing) + 2 + Length),
+                    io:format("newrest: ~s,", [NewRest]),
+                    Node ! Msg,
+                    splitter(Node, Port, NewRest)
+            end;
+        true ->
+            ok
+    end,
+    receive
+        {tcp, Socket, Data} ->
+            splitter(Node, Port, Rest ++ Data)
+    end.
+                
+    
+
+
+                                    
