@@ -3,7 +3,7 @@
 
 main() ->
     register(chat, spawn(gamelogic, chatroom, [])),
-    {ok, LSock} = gen_tcp:listen(8000, [{reuseaddr, true}]),
+    {ok, _} = gen_tcp:listen(8000, [{reuseaddr, true}]),
     {ok, Socket} = gen_tcp:connect("localhost", 8000, []),
     U = spawn(?MODULE, user, [Socket, 2, 3, "tom"]),
     chat ! {useradd, U},

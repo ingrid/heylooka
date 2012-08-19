@@ -14,9 +14,10 @@ listen() ->
     listen(LSock).
 
 listen(LSock) ->
-    listen(LSock),
     spawn(?MODULE, proto_splitter, [self(), LSock]),
-    receive cxn_created -> listen(LSock) end.
+    receive
+        cxn_created -> listen(LSock)
+    end.
     % wait until premptively-spawned client is being used by a connection
 
 proto_splitter(Listener, LSock) ->
