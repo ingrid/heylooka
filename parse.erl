@@ -2,14 +2,14 @@
 -compile(export_all).
 
 main() -> 
-    test_parse("/nick Tom"),
-    test_parse("/move N"),
-    test_parse("/event Boom").
+    test_irc_to_tuple("/nick Tom"),
+    test_irc_to_tuple("/move N"),
+    test_irc_to_tuple("/event Boom").
 
-test_parse(Str) ->
-    io:format("result of parse(\"~s\"): ~w~n", [Str, parse(Str)]).
+test_irc_to_tuple(Str) ->
+    io:format("result of irc_to_tuple(\"~s\"): ~w~n", [Str, irc_to_tuple(Str)]).
 
-parse(Data) ->
+irc_to_tuple(Data) ->
     case Data of
         "/nick " ++ Name ->
             {nick, Name};

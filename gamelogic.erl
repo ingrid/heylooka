@@ -30,13 +30,16 @@ user(Socket, X, Y, Name) ->
                     io:format("Message not in range of ~w.~n", [self()])
             end;
         Data ->
-            case parse:parse(Data) of
+            case parse:irc_to_tuple(Data) of
                 {nick, NewName} ->
                     io:format("~w name changed to ~s!~n", [self(), NewName]),
                     user(Socket, X, Y, NewName);
                 {move, Dir} ->
-                    io:format("~w moved!~n", [Name]),
-                    user(Socket, X+1, Y, Name);
+                    io:format("~w moved ~s!~n", [Name, Dir]),
+                    {DX, DY} = gamedata:get_direction(Dir),
+                    NewX = X + DX,
+                    NewY = Y + DY,
+                    user(Socket, NewX, NewY, Name);
                 {event, Event} -> 
                     io:format("message sent:~s~n", [Event]),
                     chat ! {msg, {client, X, Y, self(), Name}, Event, 5},
