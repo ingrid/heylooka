@@ -1,7 +1,13 @@
 -module(parse).
 -compile(export_all).
 
-main() -> parse("/nick Tom").
+main() -> 
+    test_parse("/nick Tom"),
+    test_parse("/move N"),
+    test_parse("/event Boom").
+
+test_parse(Str) ->
+    io:format("result of parse(\"~s\"): ~w~n", [Str, parse(Str)]).
 
 parse(Data) ->
     case Data of
@@ -14,32 +20,3 @@ parse(Data) ->
         _ ->
             io:format("Not a command")
     end.
-
-splitter(Node, Rest) ->
-    if
-        Rest =/= [] ->
-            {Length, Trailing} = string:to_integer(Rest),
-            if
-                Length =:= error ->
-                    splitter(Node, "");
-                true ->
-                    io:format("length: ~w, trailing: ~s", [Length, Trailing]),
-                    Msg = string:sub_string(Trailing, 2, Length + 1),
-                    io:format("Msg: ~s", [Msg]),
-                    NewRest = string:sub_string(Rest, string:len(Rest) - string:len(Trailing) + 2 + Length),
-                    io:format("newrest: ~s,", [NewRest]),
-                    Node ! Msg,
-                    splitter(Node, NewRest)
-            end;
-        true ->
-            ok
-    end,
-    receive
-        {tcp, Socket, Data} ->
-            splitter(Node, Rest ++ Data)
-    end.
-                
-    
-
-
-                                    
