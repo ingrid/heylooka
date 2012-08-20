@@ -6,3 +6,11 @@ I am at x, y.
 /say
 /yell
 /shout
+
+
+Running
+-------
+This runs a server that clients (like hla-client) can talk to:
+
+    erl -compile *.erl 
+    erl -noshell -s network.erl main -s init stop<CR>
