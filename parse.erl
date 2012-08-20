@@ -44,3 +44,10 @@ extract_irc_from_raw(Data) ->
                     {Msg, Rest}
             end
     end.
+
+encode_tuple_to_raw(Tuple) ->
+    case Tuple of
+        {msg, {user, From_X, From_Y, From_Pid, From_Name}, EventName, Radius} ->
+            Msg = io_lib:format("~w ~w ~w ~s", [Radius, From_X, From_Y, EventName]),
+            Msg
+    end.

@@ -21,11 +21,11 @@ user(Socket) ->
 user(Socket, X, Y, Name) ->
     io:format("starting user/4 loop with ~w~n",[self()]),
     receive
-        {msg, {client, From_X, From_Y, From_Pid, From_Name}=From, Event, Radius} ->
+        {msg, {user, From_X, From_Y, From_Pid, From_Name}=From, Event, Radius}=Tuple ->
             if
                 abs(From_X - X) + abs(From_Y - Y) < Radius ->
                     io:format("Message in range of ~w!~n", [self()]),
-                    gen_tcp:send(Socket, io_lib:format("~w ~w ~w ~s", [Radius, From_X, From_Y, Event])),
+                    gen_tcp:send(Socket, parse:encode_tuple_to_raw(Tuple)),
                     user(Socket, X, Y, Name);
                 true ->
                     io:format("Message not in range of ~w.~n", [self()])
@@ -41,9 +41,10 @@ user(Socket, X, Y, Name) ->
                     NewX = X + DX,
                     NewY = Y + DY,
                     user(Socket, NewX, NewY, Name);
-                {event, Event} -> 
-                    io:format("message sent:~s~n", [Event]),
-                    chat ! {msg, {client, X, Y, self(), Name}, Event, 5},
+                {event, EventType} ->
+                    io:format("message sent:~s~n", [EventType]),
+                    {event, EventName, Radius} = gamedata:get_event(EventType),
+                    chat ! {msg, {user, X, Y, self(), Name}, EventName, Radius},
                     user(Socket, X, Y, Name)
             end
     end.
