@@ -10,7 +10,7 @@ main() ->
     U2 = spawn(?MODULE, user, [Socket, -3, -4, "fred"]),
     chat ! {useradd, U2},
     U2 ! "/nick george",
-    U ! "/move North",
+    U ! "/move N",
     U ! "/event shout".
 
 user(Socket) ->
@@ -19,6 +19,7 @@ user(Socket) ->
     user(Socket, 0, 0, "No Name").
 
 user(Socket, X, Y, Name) ->
+    io:format("starting user/4 loop with ~w~n",[self()]),
     receive
         {msg, {client, From_X, From_Y, From_Pid, From_Name}=From, Event, Radius} ->
             if
