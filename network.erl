@@ -29,30 +29,19 @@ proto_splitter(Listener, LSock) ->
     splitter(User, "").
 
 splitter(Node, Rest) ->
-    if
-        Rest =/= [] ->
-            {Length, Trailing} = string:to_integer(Rest),
-            if
-                Length =:= error ->
-                    splitter(Node, "");
-                true ->
-                    io:format("length: ~w, trailing: ~s", [Length, Trailing]),
-                    Msg = string:sub_string(Trailing, 2, Length + 1),
-                    io:format("Msg: ~s", [Msg]),
-                    NewRest = string:sub_string(Rest, string:len(Rest) - string:len(Trailing) + 2 + Length),
-                    io:format("newrest: ~s,", [NewRest]),
-                    Node ! Msg,
-                    splitter(Node, NewRest)
-            end;
-        true ->
-            ok
+    NewRest = case parse:extract_irc_from_raw(Rest) of
+        {no_message, RawRest} ->
+            RawRest;
+        {Msg, RawRest} ->
+            Node ! Msg,
+            splitter(Node, RawRest)
     end,
     io:format("splitter ~w now receiving...", [self()]),
     receive
-        {tcp, Socket, Data} ->
+        {tcp, _, Data} ->
             io:format("received message from tcp connection: ~s~n", [Data]),
             io:format("calling splitter with: ~s~n", [Rest ++ Data]),
-            splitter(Node, Rest ++ Data)
+            splitter(Node, NewRest ++ Data)
     end.
 
 
