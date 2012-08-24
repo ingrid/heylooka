@@ -3,10 +3,10 @@
 
 %% -define(CLIENT, {client, X, Y, Pid}).
 
-chat_node(Users, Neighbors) ->
+chat_node(Users, X, Y, Neighbors) ->
     receive
         {add_user, Username, UserPID} ->
-            chat_node(Users ++ [{Username, UserPID}], Neighbors);
+            chat_node(Users ++ [{Username, UserPID}], X, Y, Neighbors);
         {dispatch, {FromName, FromPID} = Sender, Msg} ->
             io:format("Dispatching~n"),
             FormatMsg = io_lib:format(string:join(["~s: ", Msg], ""), [FromName]),
@@ -14,27 +14,31 @@ chat_node(Users, Neighbors) ->
             lists:foreach(F, Users),
             N = fun(Neigh) -> Neigh ! {dispatch, Sender, Msg} end,
             lists:foreach(N, Neighbors),
-            chat_node(Users, Neighbors);
-        {rm_user, Username, UserPID} ->
-            ok;
+            chat_node(Users, X, Y, Neighbors);
         {users} -> 
             io:format("~p~n", [Users]),           
-            chat_node (Users, Neighbors);
+            chat_node (Users, X, Y, Neighbors);
         {add_nightbor, Node} ->
-            chat_node(Users, Neighbors ++ [Node]);
-        {event, {FromName, _FromPID}, Origin, Range} ->
-            ok;
+            chat_node(Users, X, Y, Neighbors ++ [Node]);
         Message ->
             io:format("~p~n", [Message]),
-            io:fwrite("Panic.~n")
+            io:fwrite("Panic.~n"),
+            chat_node (Users, X, Y, Neighbors)
         end.
 
-spawn_chat_node() ->
-    ok.
+spawn_chat_node(X, Y, Neighbors) ->
+    spawn(?MODULE, chat_node, [[], X, Y, Neighbors]).
+
+spawn_chat_node_at(I, Width) ->
+    
+
+spawn_map() ->
+    list:seq(1, 25),
+    
 
 set_up() ->
-    register(test_neighbor, spawn(?MODULE, chat_node, [[], []])),
-    register(test_chat, spawn(?MODULE, chat_node, [[], [test_neighbor]])),
+    register(test_neighbor, spawn(?MODULE, chat_node, [[], 0, 0, []])),
+    register(test_chat, spawn(?MODULE, chat_node, [[], 0, 0, [test_neighbor]])),
     register(foo, spawn(?MODULE, user, ["Foo", 0, 0])),
     register(bar, spawn(?MODULE, user, ["Bar", 0, 0, test_neighbor])),
     test_neighbor ! {add_user, "Bar", bar},
