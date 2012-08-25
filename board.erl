@@ -7,14 +7,33 @@ start() ->
     register(board, spawn(?MODULE, board_positions, [])),
     Center = spawn(?MODULE, node, [0, 0]),
     radiate_msg(Center, grow, 4),
-    radiate_msg(Center, "Hello", 2),
-    board.
+%    radiate_msg(Center, "Hello", 2),
+    Levels = 4,
+    io:format("predicted nodes for ~w levels: ~w~n", [Levels, total_nodes(Levels)]).
+
+grow_and_wait(Node, Levels) ->
+    radiate_msg(Node, grow, Levels),
+    wait(total_nodes(Levels)).
 
 radiate_msg(Node, Msg, Levels) ->
     Node ! {msg, Msg, n, e, next_time, Levels},
     Node ! {msg, Msg, e, s, next_time, Levels},
     Node ! {msg, Msg, s, w, next_time, Levels},
     Node ! {msg, Msg, w, n, next_time, Levels}.
+
+wait(Max) ->
+    board ! {count, self()},
+    receive
+        {count, Max} ->
+            ok;
+        {count, Count} ->
+            io:format("~w/~w~n", [Count, Max]),
+            wait(Max)
+    end.
+
+total_nodes(GrowLevels) ->
+    CalcLevels = GrowLevels + 2,
+    (2*CalcLevels*CalcLevels) - (2*CalcLevels) + 1.
 
 board_positions() ->
     Mapping = dict:new(),
@@ -35,7 +54,13 @@ board_positions(Mapping) ->
             end,
             Neighbors = [n, s, e, w],
             lists:map(F, Neighbors),
-            board_positions(NewMapping)
+            board_positions(NewMapping);
+        {count, Who} ->
+            Who ! {count, dict:size(Mapping)},
+            board_positions(Mapping);
+        {sendall, Msg} ->
+            F = fun({_, Node}) -> Node ! Msg end,
+            list:map(F, dict:to_list(Mapping))
     end.
 
 offset_node(OrigX, OrigY, Direction) ->
